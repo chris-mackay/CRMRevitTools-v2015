@@ -19,7 +19,7 @@ using Autodesk.Revit.Attributes;
 
 namespace SharedParameterCreator
 {
-    [Transaction(TransactionMode.Automatic)]
+    [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
 
     public class Class1 : IExternalCommand
