@@ -23,7 +23,7 @@
  * `Setup Script-v2015.iss`: Inno Setup Script file
 
 ### RevitAPI-v2015
- * Contains the Revit API references for both **v2015**. This is where Visual Studio references the API. `Copy Local` should be set to `False` in Properties.
+ * Contains the Revit API references for **v2015**. This is where Visual Studio references the API. `Copy Local` should be set to `False` in Properties.
 
 ### Visual Studio
  * This folder contains the project directories created by Visual Studio
