@@ -56,12 +56,12 @@ namespace CreateRevitSheets
 
         //VIEW DICTIONARY
         private Dictionary<string, ElementId> viewDictionary;
-        
+
         //STRINGS
         private string titleBlockName;
-        
+
         #endregion
-       
+
         public MainForm()
         {
             InitializeComponent();
@@ -84,7 +84,7 @@ namespace CreateRevitSheets
             viewCollector = new FilteredElementCollector(revitDoc);
             viewFilter = new ElementCategoryFilter(BuiltInCategory.OST_Views);
             viewList = viewCollector.WherePasses(viewFilter).ToElements(); //CONTAINS ALL THE VIEWS IN THE PROJECT
-            
+
             //VIEW SHEETS
             viewSheetCollector = new FilteredElementCollector(revitDoc);
             viewSheetCollector.OfClass(typeof(Autodesk.Revit.DB.ViewSheet));
@@ -98,9 +98,9 @@ namespace CreateRevitSheets
 
             //VIEW DICTIONARY
             viewDictionary = new Dictionary<string, ElementId>();
-         
+
         }
-        
+
         private void cbTitleblocks_SelectedIndexChanged(object sender, EventArgs e)
         {
 
@@ -117,7 +117,7 @@ namespace CreateRevitSheets
             }
 
         }
-                
+
         private void MainForm_Load(object sender, EventArgs e)
         {
             this.GetAllAvailableViewNamesAndIds();
@@ -127,7 +127,7 @@ namespace CreateRevitSheets
             cbViewTypes.SelectedIndex = 0; //SELECT FLOOR PLANS BY DEFAULT
             btnCreate.Enabled = false;
         }
-        
+
         public Result LoadTitleblock()
         {
 
@@ -156,7 +156,7 @@ namespace CreateRevitSheets
                 Autodesk.Revit.DB.Family family = null;
                 if (revitDoc.LoadFamily(openFileDialog1.FileName, out family))
                 {
-                    
+
                     //LOADS ALL TITLEBLOCKS
                     //CREATE A FILTER TO GET ALL THE TITLEBLOCK TYPES
                     FilteredElementCollector titleblockCollector = new FilteredElementCollector(revitDoc);
@@ -179,8 +179,44 @@ namespace CreateRevitSheets
             }
 
             return Result.Succeeded;
-        }              
-       
+        }
+
+        private ContextMenu TableContextMenu()
+        {
+            ContextMenu mnu = new ContextMenu();
+            MenuItem cxmnuAddSheet = new MenuItem("Add Sheet");
+            MenuItem cxmnuEditSheet = new MenuItem("Edit Sheet");
+            MenuItem cxmnuRemoveSheet = new MenuItem("Remove Sheet");
+            MenuItem cxmnuAddView = new MenuItem("Add View -->");
+            MenuItem cxmnuRemoveView = new MenuItem("<-- Remove View");
+
+            cxmnuAddSheet.Click += new EventHandler(cxmnuAddSheet_Click);
+            cxmnuEditSheet.Click += new EventHandler(cxmnuEditSheet_Click);
+            cxmnuRemoveSheet.Click += new EventHandler(cxmnuRemoveSheet_Click);
+            cxmnuAddView.Click += new EventHandler(cxmnuAddView_Click);
+            cxmnuRemoveView.Click += new EventHandler(cxmnuRemoveView_Click);
+
+            mnu.MenuItems.Add(cxmnuAddSheet);
+            mnu.MenuItems.Add(cxmnuEditSheet);
+            mnu.MenuItems.Add(cxmnuRemoveSheet);
+            mnu.MenuItems.Add("-");
+            mnu.MenuItems.Add(cxmnuAddView);
+            mnu.MenuItems.Add(cxmnuRemoveView);
+
+            return mnu;
+        }
+
+        private void dgvSheetToCreate_MouseUp_1(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                ContextMenu contextMenu = new ContextMenu();
+                contextMenu = TableContextMenu();
+                contextMenu.Show(dgvSheetToCreate, new System.Drawing.Point(e.X, e.Y));
+            }
+
+        }
+
         public void GetAllSheetsToCreateFromCSV(string _filename)
         {
             List<string> disregardedSheetsNumbersList = new List<string>();
@@ -197,34 +233,56 @@ namespace CreateRevitSheets
                 char[] separator = new char[] { ',' };
                 string[] values = csvLine.Split(separator, StringSplitOptions.None);
 
-                //MAKE SURE BOTH VALUES ARE VALID
-                if (values[0] != null && values[0].Length > 0 && values[1] != null && values[1].Length > 0)
-                {   
-                    string sheetNumber = null;
-                    string sheetName = null;
-
-                    sheetNumber = values[0];
-                    sheetName = values[1];
-
-                    string entry = string.Empty;
-
-                    entry = sheetNumber + ":" + sheetName;
-
-                    if (usedViewSheetNumbers.Contains(sheetNumber))
+                try
+                {
+                    //MAKE SURE BOTH VALUES ARE VALID
+                    if (values[0] != "" && values[1] != "")
                     {
-                        disregardedSheetsNumbersList.Add(sheetNumber);
-                        disregardedSheetNumbers.Append(sheetNumber + "\n");
+                        string sheetNumber = null;
+                        string sheetName = null;
+
+                        sheetNumber = values[0];
+                        sheetName = values[1];
+
+                        string entry = string.Empty;
+
+                        entry = sheetNumber + ":" + sheetName;
+
+                        if (usedViewSheetNumbers.Contains(sheetNumber))
+                        {
+                            disregardedSheetsNumbersList.Add(sheetNumber);
+                            disregardedSheetNumbers.Append(sheetNumber + "\n");
+                        }
+                        else
+                        {
+                            this.dgvSheetToCreate.Rows.Add(entry, ""); //ADDS THE NEW SHEET TO THE LIST
+                        }
                     }
                     else
                     {
-                        this.dgvSheetToCreate.Rows.Add(entry, ""); //ADDS THE NEW SHEET TO THE LIST
+                        TaskDialog taskDialog = new TaskDialog("Create Sheets");
+
+                        taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconNone;
+                        taskDialog.MainInstruction = "A Sheet Name and Sheet Number must be provided for each entry.";
+                        taskDialog.MainContent = "Load Sheets has been cancelled. Check your file and try again.";
+                        taskDialog.Show();
+                        break;
                     }
-                    
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    TaskDialog taskDialog = new TaskDialog("Create Sheets");
+
+                    taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconNone;
+                    taskDialog.MainInstruction = "A Sheet Name and Sheet Number must be provided for each entry.";
+                    taskDialog.MainContent = "Load Sheets has been cancelled. Check your file and try again.";
+                    taskDialog.Show();
+                    break;
                 }
             }
 
             if (disregardedSheetsNumbersList.Count > 0)
-            {   
+            {
                 TaskDialog taskDialog = new TaskDialog("Create Sheets");
 
                 taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconNone;
@@ -241,7 +299,6 @@ namespace CreateRevitSheets
             {
                 btnCreate.Enabled = false;
             }
-
         }
 
         public void GetAllAvailableViewNamesAndIds()
@@ -270,7 +327,7 @@ namespace CreateRevitSheets
 
                 }
             }
-            
+
             foreach (Autodesk.Revit.DB.View v in viewList)
             {
                 string vName = string.Empty;
@@ -331,7 +388,7 @@ namespace CreateRevitSheets
                 }
             }
         }
-        
+
         private void cbViews_SelectedIndexChanged(object sender, EventArgs e)
         {
 
@@ -373,9 +430,9 @@ namespace CreateRevitSheets
                     break;
                 default:
                     break;
-            }            
+            }
         }
-        
+
         #region BUTTON EVENTS
 
         private void btnBrowse_Click(object sender, EventArgs e)
@@ -405,7 +462,6 @@ namespace CreateRevitSheets
                     this.GetAllSheetsToCreateFromCSV(fileName); //FILLS THE LISTBOX WITH THE SHEETS YOU WANT TO CREATE
                 }
             }
-
         }
 
         private void btnCreate_Click(object sender, EventArgs e)
@@ -864,6 +920,5 @@ namespace CreateRevitSheets
         }
 
         #endregion
-
     }
 }
